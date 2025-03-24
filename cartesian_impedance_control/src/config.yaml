@@ -1,0 +1,14 @@
+function_type: 1
+
+linear:
+  max_torque: 3.0
+  danger_angle: 1.0
+  
+quadratic:
+  max_torque: 1.0
+  danger_angle: 0.5
+
+exponential:
+  danger_angle: 1.0
+  A: 1.0
+  base: 1.0

@@ -1,0 +1,21 @@
+bool button_a0
+bool button_b1
+bool button_x2
+bool button_y3
+bool button_4
+bool button_menu_6
+bool button_l3_7
+bool button_r3_8
+bool button_l1_9
+bool button_r1_10
+bool button_up_11
+bool button_down_12
+bool button_left_13
+bool button_right_14
+
+float64 joystick_l_vert
+float64 joystick_l_hori
+float64 joystick_r_vert
+float64 joystick_r_hori
+float64 l2_axis4
+float64 r2_axis5
