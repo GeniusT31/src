@@ -383,6 +383,13 @@ controller_interface::return_type CartesianImpedanceController::update(const rcl
   }
   rotation_d_target_[2] += 0.0005 * desired_ee_vel[5];
 
+  if(!button_menu_6_prev && msg.button_menu_6){
+    singularity_torques_on = !singularity_torques_on;
+    if(singularity_torques_on) std::cout << "Singularity torques now ON" << std::endl;
+    else std::cout << "Singularity torques now OFF" << std::endl;
+  }
+
+  button_menu_6_prev = msg.button_menu_6;
 
   if(msg.button_l1_9 && !file.is_open()){
     recording = true;
@@ -417,7 +424,7 @@ controller_interface::return_type CartesianImpedanceController::update(const rcl
   //stationary_torques = -ks * jacobian.transpose() * jacobian * dq_;
 
   tau_d_placeholder += task_torques;
-  tau_d_placeholder += singularity_torques;
+  tau_d_placeholder += singularity_torques * singularity_torques_on;
   tau_d_placeholder += joint_limit_torques;
   tau_d_placeholder += damping_torques;
 

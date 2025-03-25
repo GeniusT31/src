@@ -151,6 +151,8 @@ public:
     Eigen::Vector<double, 3> pos_goal{0.2, 0.0, 0.3};
 
     bool recording = false;
+    bool singularity_torques_on = true;
+    bool button_menu_6_prev = false;
     std::ofstream file;
     std::chrono::high_resolution_clock::time_point starting_time;
     std::chrono::high_resolution_clock::time_point current_time;
