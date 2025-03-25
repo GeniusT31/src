@@ -385,8 +385,6 @@ controller_interface::return_type CartesianImpedanceController::update(const rcl
   double kd = 3.5;
   singularity_torques = kd * (dq_goal - dq_);
 
-  //if(current_manipulability * 10000 > 60.0){singularity_torques = Eigen::VectorXd::Zero(7);}
-
   rclcpp::spin_some(sub_node);
   auto msg = sub_node->get_latest_twist();
   Eigen::Vector<double, 6> desired_ee_vel;
@@ -413,11 +411,11 @@ controller_interface::return_type CartesianImpedanceController::update(const rcl
 
   if(msg.button_l1_9 && !file.is_open()){
     recording = true;
-    file.open("/home/anthonyli/Desktop/Thesis_Data/det(JJT)/Tony.csv");
+    if(singularity_torques_on) {file.open(csv_path + current_user + "_singAvoidOn_" + std::to_string(noSingOn) + ".csv" ); ++noSingOn;}
+    else(!singularity_torques_on) {file.open(csv_path + current_user + "_singAvoidOff_" + std::to_string(noSingOff) + ".csv" ); ++noSingOff;}
+    std::cout << "Recoding has begun:\n";
     file << "Time,Manipulability\n";
     starting_time = std::chrono::high_resolution_clock::now();
-    current_time = std::chrono::high_resolution_clock::now();
-    duration = current_time - starting_time;
   }
   else if(msg.button_r1_10 && recording){
     if(file.is_open()) file.close();
@@ -429,8 +427,7 @@ controller_interface::return_type CartesianImpedanceController::update(const rcl
     current_time = std::chrono::high_resolution_clock::now();
     duration = current_time - starting_time;
     file << duration.count() << "," << current_manipulability * 10000 << "\n";
-    file.flush();
-    
+    //file.flush();
   }
 
   double kp = 20.0;
