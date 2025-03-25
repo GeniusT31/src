@@ -427,7 +427,7 @@ controller_interface::return_type CartesianImpedanceController::update(const rcl
     current_time = std::chrono::high_resolution_clock::now();
     duration = current_time - starting_time;
     file << duration.count() << "," << current_manipulability * 10000 << "\n";
-    //file.flush();
+    file.flush();
   }
 
   double kp = 20.0;

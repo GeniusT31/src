@@ -166,6 +166,7 @@ public:
     bool singularity_torques_on = true;
     unsigned int noSingOff = 1;
     unsigned int noSingOn = 1;
+    
     std::string csv_path = "/home/anthonyli/Desktop/Thesis_Data/det(JJT)/";
     std::string current_user = "Tony"; //only used for naming the .csv file created
     bool button_menu_6_prev = false;
