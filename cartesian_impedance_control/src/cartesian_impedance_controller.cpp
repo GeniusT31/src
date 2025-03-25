@@ -104,6 +104,26 @@ Eigen::MatrixXd pseudoInverse(const Eigen::MatrixXd& M){
   return inverse;
 }
 
+Eigen::MatrixXd critical_damping_matrix(const Eigen::MatrixXd& K, const Eigen::MatrixXd& M){
+  Eigen::MatrixXd Intermediate = K * M;
+  return 2.1 * Intermediate.sqrt();
+}
+
+Eigen::MatrixXd critical_damping_matrix(double k, const Eigen::MatrixXd& M){
+  return 2.1 * std::sqrt(k) * M.sqrt();
+}
+
+Eigen::MatrixXd critical_damping_matrix(const Eigen::MatrixXd& K, const Eigen::MatrixXd& M, const Eigen::MatrixXd& jacobian){
+  Eigen::MatrixXd Intermediate = pseudoInverse(jacobian * pseudoInverse(M) * jacobian.transpose());
+  return critical_damping_matrix(K, Intermediate);
+}
+
+Eigen::MatrixXd critical_damping_matrix(double k, const Eigen::MatrixXd& M, const Eigen::MatrixXd& jacobian){
+  Eigen::MatrixXd Intermediate = pseudoInverse(jacobian * pseudoInverse(M) * jacobian.transpose());
+  return critical_damping_matrix(k, Intermediate);
+}
+
+
 controller_interface::InterfaceConfiguration
 CartesianImpedanceController::command_interface_configuration() const {
   controller_interface::InterfaceConfiguration config;
@@ -413,12 +433,10 @@ controller_interface::return_type CartesianImpedanceController::update(const rcl
     
   }
 
-  double kp = 50.0;
+  double kp = 20.0;
   task_torques = kp * jacobian.transpose() * (error);
 
-  Eigen::MatrixXd Intermediate = (kp * pseudoInverse(jacobian * pseudoInverse(M) * jacobian.transpose()) );
-  Eigen::MatrixXd Intermediate2 = Intermediate.sqrt();
-  damping_torques = -2.1 * jacobian.transpose() * Intermediate2 * jacobian * dq_; 
+  damping_torques = -jacobian.transpose() * critical_damping_matrix(kp, M, jacobian) * jacobian * dq_; 
 
   //double ks = 8.0;
   //stationary_torques = -ks * jacobian.transpose() * jacobian * dq_;
@@ -427,6 +445,13 @@ controller_interface::return_type CartesianImpedanceController::update(const rcl
   tau_d_placeholder += singularity_torques * singularity_torques_on;
   tau_d_placeholder += joint_limit_torques;
   tau_d_placeholder += damping_torques;
+
+  if(msg.r2_axis5 > 0.01){
+    tau_d_placeholder = msg.r2_axis5 * 0.8 * (kp_joint_space * (homing_goal - q_) - 0.9 * critical_damping_matrix(kp_joint_space, M) * dq_);
+    if(outcounter % 100 == 0){
+    std::cout << "Currently Homing" << std::endl;
+    std::cout << "Homing torque: " << tau_d_placeholder << std::endl;}
+  }
 
   tau_d << tau_d_placeholder;
   tau_d << saturateTorqueRate(tau_d, tau_J_d_M);  // Saturate torque rate to avoid discontinuities
@@ -444,11 +469,17 @@ controller_interface::return_type CartesianImpedanceController::update(const rcl
     }
     //std::cout << error << std::endl;
     //std::cout << "Desired EE velocity: \n" << desired_ee_vel << std::endl;
-    std::cout << "Distance to singularity is: " << current_manipulability * 10000 << std::endl;
+    //std::cout << "Distance to singularity is: " << current_manipulability * 10000 << std::endl;
+    std::cout << "Task torques: " << task_torques.norm() << std::endl;
+    std::cout << "singularity_torques: " << singularity_torques.norm() << std::endl;
+    std::cout << "joint_limit_torques:" << joint_limit_torques.norm() << std::endl;
+    std::cout << "Damping torques: " << damping_torques.norm() << std::endl;
+    std::cout << "Mag of dq_: " << dq_.norm() << std::endl;
+    std::cout << "All the torques" << tau_d_placeholder.norm() << std::endl;
     //std::cout << "position is: " << position << std::endl;
     //std::cout << "dq_goal is: \n" << dq_goal << std::endl;
     //std::cout << std::endl << "task torques: \n" << task_torques << std::endl;
-    //std::cout << "joint positions: \n" << q_ << std::endl;
+    std::cout << "joint positions: \n" << q_ << std::endl;
     //std::cout << "dq goal has a norm of:" << norm << std::endl;
     //std::cout << "J * dq_goal is \n" << cut_jacobian * dq_goal << std::endl;
     //std::cout << "J * current q_dot \n" << cut_jacobian * dq_ << std::endl;

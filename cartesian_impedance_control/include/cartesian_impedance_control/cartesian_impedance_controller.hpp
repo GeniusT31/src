@@ -145,10 +145,22 @@ public:
       { 0.5445, 4.5169},
       {-2.83469, 3.00255}
     };
-    double max_torque = 40.0;
-    double danger_angle = 0.8;
+
+    Eigen::Vector<double, 7> homing_goal{0.0, 0.3, 0.0, -M_PI_2, 0.0, 2.0, M_PI_4};
+    double max_torque = 30.0;
+    double danger_angle = 0.5;
     bool danger[7] = {};
     Eigen::Vector<double, 3> pos_goal{0.2, 0.0, 0.3};
+
+    //joint space impedance
+    Eigen::Matrix<double, 7, 7> kp_joint_space{
+    {20,   0,   0,   0,   0,   0,  0},
+    {0,   20,   0,   0,   0,   0,  0},
+    {0,   0,   60,   0,   0,   0,  0},
+    {0,   0,   0,   20,   0,   0,  0},
+    {0,   0,   0,   0,   30,   0,  0},
+    {0,   0,   0,   0,   0,   10,  0},
+    {0,   0,   0,   0,   0,   0,  5}};
 
     bool recording = false;
     bool singularity_torques_on = true;
