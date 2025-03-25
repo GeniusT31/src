@@ -51,6 +51,8 @@
 #include "franka_semantic_components/franka_robot_model.hpp"
 #include "franka_semantic_components/franka_robot_state.hpp"
 
+#include <fstream>
+
 #define IDENTITY Eigen::MatrixXd::Identity(6, 6)
 
 using CallbackReturn = rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn;
@@ -147,6 +149,12 @@ public:
     double danger_angle = 0.8;
     bool danger[7] = {};
     Eigen::Vector<double, 3> pos_goal{0.2, 0.0, 0.3};
+
+    bool recording = false;
+    std::ofstream file;
+    std::chrono::high_resolution_clock::time_point starting_time;
+    std::chrono::high_resolution_clock::time_point current_time;
+    std::chrono::duration<double> duration;
 
     //Impedance control variables              
     Eigen::Matrix<double, 6, 6> Lambda = IDENTITY;                                           // operational space mass matrix

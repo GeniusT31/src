@@ -21,7 +21,12 @@
 #include "yaml-cpp/yaml.h"
 #include <franka/gripper.h>
 #include <franka/exception.h>
-#include <unsupported/Eigen/MatrixFunctions>
+#include <unsupported/Eigen/MatrixFunctions> //for finding sqrt of matrix
+
+//For writing to csv file
+#include <iostream>
+#include <fstream>
+#include <chrono>
 //For
 
 #include <Eigen/Eigen>
@@ -378,6 +383,29 @@ controller_interface::return_type CartesianImpedanceController::update(const rcl
   }
   rotation_d_target_[2] += 0.0005 * desired_ee_vel[5];
 
+
+  if(msg.button_l1_9 && !file.is_open()){
+    recording = true;
+    file.open("/home/anthonyli/Desktop/Thesis_Data/det(JJT)/Tony.csv");
+    file << "Time,Manipulability\n";
+    starting_time = std::chrono::high_resolution_clock::now();
+    current_time = std::chrono::high_resolution_clock::now();
+    duration = current_time - starting_time;
+  }
+  else if(msg.button_r1_10 && recording){
+    if(file.is_open()) file.close();
+    recording = false;
+  }
+
+  if(recording && (outcounter % 100 == 0) && file.is_open()){
+    //writing to file JJT
+    current_time = std::chrono::high_resolution_clock::now();
+    duration = current_time - starting_time;
+    file << duration.count() << "," << current_manipulability * 10000 << "\n";
+    file.flush();
+    
+  }
+
   double kp = 50.0;
   task_torques = kp * jacobian.transpose() * (error);
 
@@ -410,7 +438,7 @@ controller_interface::return_type CartesianImpedanceController::update(const rcl
     //std::cout << error << std::endl;
     //std::cout << "Desired EE velocity: \n" << desired_ee_vel << std::endl;
     std::cout << "Distance to singularity is: " << current_manipulability * 10000 << std::endl;
-    std::cout << "position is: " << position << std::endl;
+    //std::cout << "position is: " << position << std::endl;
     //std::cout << "dq_goal is: \n" << dq_goal << std::endl;
     //std::cout << std::endl << "task torques: \n" << task_torques << std::endl;
     //std::cout << "joint positions: \n" << q_ << std::endl;
