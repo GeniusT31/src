@@ -389,7 +389,7 @@ controller_interface::return_type CartesianImpedanceController::update(const rcl
   Eigen::Vector<double, 6> desired_ee_vel;
   desired_ee_vel << -msg.joystick_l_vert, msg.joystick_l_hori, msg.button_b1 - msg.button_a0, 0, 0, msg.button_right_14 - msg.button_left_13;
   pos_goal += 0.0005 * desired_ee_vel.topRows(3);
-  error.topRows(3) = 4.0 * (pos_goal - position);
+  error.topRows(3) = 2.5 * (pos_goal - position);
   for(unsigned int i = 0; i < 3; ++i){
     if(pos_goal[i] - position[i] > 0.4){
       pos_goal[i] -= 0.0005 * desired_ee_vel[i];
@@ -406,7 +406,14 @@ controller_interface::return_type CartesianImpedanceController::update(const rcl
     else std::cout << "Singularity torques now OFF" << std::endl;
   }
 
+  if(!button_4_prev && msg.button_4){
+    joint_limit_torques_on = !joint_limit_torques_on;
+    if(singularity_torques_on) std::cout << "joint_limit_torques_on now ON" << std::endl;
+    else std::cout << "joint_limit_torques_on now OFF" << std::endl;
+  }
+
   button_menu_6_prev = msg.button_menu_6;
+  button_4_prev = msg.button_4;
 
   if(msg.button_l1_9 && !file.is_open()){
     recording = true;
@@ -439,7 +446,7 @@ controller_interface::return_type CartesianImpedanceController::update(const rcl
 
   tau_d_placeholder += task_torques;
   tau_d_placeholder += singularity_torques * singularity_torques_on;
-  tau_d_placeholder += joint_limit_torques * singularity_torques_on;
+  tau_d_placeholder += joint_limit_torques * joint_limit_torques_on;
   tau_d_placeholder += damping_torques;
 
   if(msg.r2_axis5 > 0.01){
@@ -465,13 +472,13 @@ controller_interface::return_type CartesianImpedanceController::update(const rcl
     }
     //std::cout << error << std::endl;
     //std::cout << "Desired EE velocity: \n" << desired_ee_vel << std::endl;
-    std::cout << "Distance to singularity is: " << current_manipulability * 10000 << std::endl;
-    std::cout << "Task torques: " << task_torques.norm() << std::endl;
-    std::cout << "singularity_torques: " << singularity_torques.norm() << std::endl;
-    std::cout << "joint_limit_torques:" << joint_limit_torques.norm() << std::endl;
-    std::cout << "Damping torques: " << damping_torques.norm() << std::endl;
-    std::cout << "Mag of dq_: " << dq_.norm() << std::endl;
-    std::cout << "All the torques" << tau_d_placeholder.norm() << std::endl;
+    //std::cout << "Distance to singularity is: " << current_manipulability * 10000 << std::endl;
+    //std::cout << "Task torques: " << task_torques.norm() << std::endl;
+    //std::cout << "singularity_torques: " << singularity_torques.norm() << std::endl;
+    //std::cout << "joint_limit_torques:" << joint_limit_torques.norm() << std::endl;
+    //std::cout << "Damping torques: " << damping_torques.norm() << std::endl;
+    //std::cout << "Mag of dq_: " << dq_.norm() << std::endl;
+    //std::cout << "All the torques" << tau_d_placeholder.norm() << std::endl;
     //std::cout << "position is: " << position << std::endl;
     //std::cout << "dq_goal is: \n" << dq_goal << std::endl;
     //std::cout << std::endl << "task torques: \n" << task_torques << std::endl;
