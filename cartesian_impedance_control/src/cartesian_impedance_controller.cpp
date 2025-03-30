@@ -381,16 +381,15 @@ controller_interface::return_type CartesianImpedanceController::update(const rcl
     Eigen::VectorXd dq_goal = N * N_pseud * del_manipulability;
     dq_goal = N * N_pseud * del_manipulability;
   }
-  dq_goal *= 1000;
-  double kd = 3.5;
+  dq_goal *= 2000;
+  double kd = 11.0;
   singularity_torques = kd * (dq_goal - dq_);
-
   rclcpp::spin_some(sub_node);
   auto msg = sub_node->get_latest_twist();
   Eigen::Vector<double, 6> desired_ee_vel;
   desired_ee_vel << -msg.joystick_l_vert, msg.joystick_l_hori, msg.button_b1 - msg.button_a0, 0, 0, msg.button_right_14 - msg.button_left_13;
   pos_goal += 0.0005 * desired_ee_vel.topRows(3);
-  error.topRows(3) = 2.0 * (pos_goal - position);
+  error.topRows(3) = 4.0 * (pos_goal - position);
   for(unsigned int i = 0; i < 3; ++i){
     if(pos_goal[i] - position[i] > 0.4){
       pos_goal[i] -= 0.0005 * desired_ee_vel[i];
@@ -412,7 +411,7 @@ controller_interface::return_type CartesianImpedanceController::update(const rcl
   if(msg.button_l1_9 && !file.is_open()){
     recording = true;
     if(singularity_torques_on) {file.open(csv_path + current_user + "_singAvoidOn_" + std::to_string(noSingOn) + ".csv" ); ++noSingOn;}
-    else(!singularity_torques_on) {file.open(csv_path + current_user + "_singAvoidOff_" + std::to_string(noSingOff) + ".csv" ); ++noSingOff;}
+    else if(!singularity_torques_on) {file.open(csv_path + current_user + "_singAvoidOff_" + std::to_string(noSingOff) + ".csv" ); ++noSingOff;}
     std::cout << "Recoding has begun:\n";
     file << "Time,Manipulability\n";
     starting_time = std::chrono::high_resolution_clock::now();
@@ -430,7 +429,7 @@ controller_interface::return_type CartesianImpedanceController::update(const rcl
     file.flush();
   }
 
-  double kp = 20.0;
+  double kp = 30.0;
   task_torques = kp * jacobian.transpose() * (error);
 
   damping_torques = -jacobian.transpose() * critical_damping_matrix(kp, M, jacobian) * jacobian * dq_; 
@@ -440,7 +439,7 @@ controller_interface::return_type CartesianImpedanceController::update(const rcl
 
   tau_d_placeholder += task_torques;
   tau_d_placeholder += singularity_torques * singularity_torques_on;
-  tau_d_placeholder += joint_limit_torques;
+  tau_d_placeholder += joint_limit_torques * singularity_torques_on;
   tau_d_placeholder += damping_torques;
 
   if(msg.r2_axis5 > 0.01){
@@ -466,7 +465,7 @@ controller_interface::return_type CartesianImpedanceController::update(const rcl
     }
     //std::cout << error << std::endl;
     //std::cout << "Desired EE velocity: \n" << desired_ee_vel << std::endl;
-    //std::cout << "Distance to singularity is: " << current_manipulability * 10000 << std::endl;
+    std::cout << "Distance to singularity is: " << current_manipulability * 10000 << std::endl;
     std::cout << "Task torques: " << task_torques.norm() << std::endl;
     std::cout << "singularity_torques: " << singularity_torques.norm() << std::endl;
     std::cout << "joint_limit_torques:" << joint_limit_torques.norm() << std::endl;
@@ -476,7 +475,7 @@ controller_interface::return_type CartesianImpedanceController::update(const rcl
     //std::cout << "position is: " << position << std::endl;
     //std::cout << "dq_goal is: \n" << dq_goal << std::endl;
     //std::cout << std::endl << "task torques: \n" << task_torques << std::endl;
-    std::cout << "joint positions: \n" << q_ << std::endl;
+    //std::cout << "joint positions: \n" << q_ << std::endl;
     //std::cout << "dq goal has a norm of:" << norm << std::endl;
     //std::cout << "J * dq_goal is \n" << cut_jacobian * dq_goal << std::endl;
     //std::cout << "J * current q_dot \n" << cut_jacobian * dq_ << std::endl;

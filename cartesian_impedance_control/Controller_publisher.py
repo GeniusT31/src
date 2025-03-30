@@ -141,8 +141,8 @@ class Vel_Publisher(Node):
                     msg.button_right_14 = True
                 print(f"Button {button} pressed")
 
-                '''elif(button == 6):
-                    sdl2.SDL_Quit()
+                #if quitting desired
+                '''    sdl2.SDL_Quit()
                     sys.exit(1)'''
                 
             elif event.type == sdl2.SDL_CONTROLLERBUTTONUP:

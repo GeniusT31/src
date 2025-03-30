@@ -61,7 +61,6 @@ class GraspActionClient(Node):
         else:
             self.get_logger().error(f"Grasp failed: {result.error}")
             self.complete = True
-        print("yeeda yada")
 
 def main(args=None):
     # Initialize SDL2 with video and game controller support.
@@ -92,13 +91,12 @@ def main(args=None):
     rclpy.init(args=args)
     action_client = GraspActionClient()
     
-    # Example goal values
-    width = 0.08  # 8 cm
-    epsilon = GraspEpsilon(inner = 0.1, outer = 0.1)  # Define the correct epsilon structure
-    speed = 0.05  # 5 cm/s
-    force = 20.0  # 20 N
-    close = False
-    open = False
+    # Goal values
+    epsilon = GraspEpsilon(inner = 0.1, outer = 0.1)
+    speed = 0.1
+    force = 20.0
+    closing = False
+    opening = False
 
     while running:
         # Poll events from the SDL event queue.
@@ -112,31 +110,25 @@ def main(args=None):
                 button = event.cbutton.button
                 if(button == 9):
                     width = 0.0
-                    speed = 0.1
                     action_client.send_goal(width, epsilon, speed, force)
-                    close = True
+                    closing = True
                     action_client.complete = False
                 elif(button == 10):
                     width = 0.075
-                    speed = 0.1
                     action_client.send_goal(width, epsilon, speed, force)
-                    open = True
+                    opening = True
                     action_client.complete = False
-                elif(button == 6):
-                    running = False
                 print(f"Button {button} pressed")
             elif event.type == sdl2.SDL_CONTROLLERBUTTONUP:
                 button = event.cbutton.button
                 print(f"Button {button} released")
             
-            while(close or open):
+            while(closing or opening):
                 rclpy.spin_once(action_client)
                 if action_client.complete:
-                    close = False
-                    open = False
-                
-
-    print("bye bye")
+                    closing = False
+                    opening = False
+    print("Shutting down grasp action client")
     # Clean up before exiting.
     sdl2.SDL_GameControllerClose(controller)
     sdl2.SDL_Quit()
