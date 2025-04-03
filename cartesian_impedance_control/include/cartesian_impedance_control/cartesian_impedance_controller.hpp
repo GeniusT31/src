@@ -110,6 +110,9 @@ public:
     Eigen::Matrix<double, 7, 1> q_;
     std::array<double, 7> q_as_array;
     Eigen::Vector<double, 7> del_manipulability;
+    Eigen::MatrixXd N;
+    Eigen::MatrixXd N_pseud;
+    Eigen::VectorXd dq_goal;
     Eigen::Matrix<double, 7, 1> dq_;
     Eigen::MatrixXd jacobian_transpose_pinv;  
 
@@ -145,7 +148,7 @@ public:
       { 0.5445, 4.5169},
       {-2.83469, 3.00255}
     };
-
+  
     Eigen::Vector<double, 7> homing_goal{0.0, 0.3, 0.0, -M_PI_2, 0.0, 2.0, M_PI_4};
     double max_torque = 30.0;
     double danger_angle = 0.5;
@@ -172,6 +175,7 @@ public:
     std::string current_user = "Tony"; //only used for naming the .csv file created
     bool button_menu_6_prev = false;
     bool button_4_prev = false;
+    Eigen::Vector<double, 3> prev_ee_vel{0.0, 0.0, 0.0};
     std::ofstream file;
     std::chrono::high_resolution_clock::time_point starting_time;
     std::chrono::high_resolution_clock::time_point current_time;
