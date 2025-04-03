@@ -98,10 +98,25 @@ inline void pseudoInverse(const Eigen::MatrixXd& M_, Eigen::MatrixXd& M_pinv_, b
   M_pinv_ = Eigen::MatrixXd(svd.matrixV() * S_.transpose() * svd.matrixU().transpose());
 }
 
-Eigen::MatrixXd pseudoInverse(const Eigen::MatrixXd& M){
+Eigen::MatrixXd pseudoInverse(const Eigen::MatrixXd& M, bool damped = true){
   Eigen::MatrixXd inverse;
-  pseudoInverse(M, inverse);
+  pseudoInverse(M, inverse, damped);
   return inverse;
+}
+
+//pseudo inverse where the input and output matricies are forced to be rank 1
+Eigen::MatrixXd pseudoInverse_rank_1(Eigen::MatrixXd N){
+  Eigen::JacobiSVD<Eigen::MatrixXd> svd(N, Eigen::ComputeThinU | Eigen::ComputeThinV);
+
+    Eigen::VectorXd singVals = svd.singularValues();
+    Eigen::MatrixXd U = svd.matrixU();
+    Eigen::MatrixXd V = svd.matrixV();
+
+    // 4) The largest singular value is singVals(0) (if rank-1 is correct, the rest are near zero)
+    double sigma1 = singVals(0);
+
+    Eigen::MatrixXd N_pinv = V.col(0) * (1.0 / sigma1) * U.col(0).transpose();
+    return N_pinv;
 }
 
 Eigen::MatrixXd critical_damping_matrix(const Eigen::MatrixXd& K, const Eigen::MatrixXd& M){
@@ -267,6 +282,13 @@ double manipulability(const Eigen::MatrixXd& jacobian){
   return JJT.determinant();
 }
 
+Eigen::VectorXd torques_limited(const Eigen::VectorXd torques, bool max = 7.0){
+  if(torques.norm() > max){
+    return max * torques / torques.norm();
+  }
+  return torques;
+}
+
 controller_interface::return_type CartesianImpedanceController::update(const rclcpp::Time& /*time*/, const rclcpp::Duration& /*period*/) {  
   // if (outcounter == 0){
   // std::cout << "Enter 1 if you want to track a desired position or 2 if you want to use free floating with optionally shaped inertia" << std::endl;
@@ -373,42 +395,49 @@ controller_interface::return_type CartesianImpedanceController::update(const rcl
     q_as_array[i] = q_as_array[i] - delta_q;
   }
   
-  Eigen::VectorXd dq_goal = del_manipulability / 100;
-
+  dq_goal = del_manipulability / 100;
+  
   if(current_manipulability * 10000 > 30){
-    Eigen::MatrixXd N = Eigen::MatrixXd::Identity(7, 7) - pseudoInverse(cut_jacobian) * cut_jacobian;
-    Eigen::MatrixXd N_pseud = pseudoInverse(N);
-    Eigen::VectorXd dq_goal = N * N_pseud * del_manipulability;
+    N = Eigen::MatrixXd::Identity(7, 7) - pseudoInverse(cut_jacobian) * cut_jacobian;
+    N_pseud = pseudoInverse_rank_1(N);
     dq_goal = N * N_pseud * del_manipulability;
   }
   dq_goal *= 2000;
   double kd = 11.0;
   singularity_torques = kd * (dq_goal - dq_);
+  //singularity_torques = torques_limited(singularity_torques, 30.0);
+  stationary_torques = -critical_damping_matrix(kd, M) * dq_;
+
   rclcpp::spin_some(sub_node);
   auto msg = sub_node->get_latest_twist();
   Eigen::Vector<double, 6> desired_ee_vel;
-  desired_ee_vel << -msg.joystick_l_vert, msg.joystick_l_hori, msg.button_b1 - msg.button_a0, 0, 0, msg.button_right_14 - msg.button_left_13;
+  //desired_ee_vel << -msg.joystick_l_vert, msg.joystick_l_hori, msg.button_b1 - msg.button_a0, 0, 0, msg.button_right_14 - msg.button_left_13;
+  desired_ee_vel <<  -msg.joystick_l_hori, -msg.joystick_l_vert, msg.button_b1 - msg.button_a0, 0, 0, msg.button_right_14 - msg.button_left_13;
   pos_goal += 0.0005 * desired_ee_vel.topRows(3);
   error.topRows(3) = 2.5 * (pos_goal - position);
   for(unsigned int i = 0; i < 3; ++i){
     if(pos_goal[i] - position[i] > 0.4){
       pos_goal[i] -= 0.0005 * desired_ee_vel[i];
     }
-    if(std::abs(desired_ee_vel[i]) < 0.01){
+    if((std::abs(desired_ee_vel[i]) < 0.05)){
       pos_goal[i] = position[i];
     }
   }
   rotation_d_target_[2] += 0.0005 * desired_ee_vel[5];
+  prev_ee_vel = desired_ee_vel.topRows(3);
 
   if(!button_menu_6_prev && msg.button_menu_6){
     singularity_torques_on = !singularity_torques_on;
-    if(singularity_torques_on) std::cout << "Singularity torques now ON" << std::endl;
+    if(singularity_torques_on){
+      std::cout << "Singularity torques now ON" << std::endl;
+      std::cout << "singularity_torques: " << singularity_torques.norm() << std::endl;
+    }
     else std::cout << "Singularity torques now OFF" << std::endl;
   }
 
   if(!button_4_prev && msg.button_4){
     joint_limit_torques_on = !joint_limit_torques_on;
-    if(singularity_torques_on) std::cout << "joint_limit_torques_on now ON" << std::endl;
+    if(joint_limit_torques_on) std::cout << "joint_limit_torques_on now ON" << std::endl;
     else std::cout << "joint_limit_torques_on now OFF" << std::endl;
   }
 
@@ -448,12 +477,14 @@ controller_interface::return_type CartesianImpedanceController::update(const rcl
   tau_d_placeholder += singularity_torques * singularity_torques_on;
   tau_d_placeholder += joint_limit_torques * joint_limit_torques_on;
   tau_d_placeholder += damping_torques;
+  //tau_d_placeholder += stationary_torques;
 
   if(msg.r2_axis5 > 0.01){
     tau_d_placeholder = msg.r2_axis5 * 0.8 * (kp_joint_space * (homing_goal - q_) - 0.9 * critical_damping_matrix(kp_joint_space, M) * dq_);
     if(outcounter % 100 == 0){
     std::cout << "Currently Homing" << std::endl;
     std::cout << "Homing torque: " << tau_d_placeholder << std::endl;}
+    //tau_d_placeholder = torques_limited(tau_d_placeholder, 20.0);
   }
 
   tau_d << tau_d_placeholder;
@@ -471,16 +502,19 @@ controller_interface::return_type CartesianImpedanceController::update(const rcl
         std::cout << "Reaction torque is " << tau_d(i) << std::endl;}
     }
     //std::cout << error << std::endl;
+    //std::cout << "N*N+\n" << 1000 * N * N_pseud << std::endl;
     //std::cout << "Desired EE velocity: \n" << desired_ee_vel << std::endl;
-    //std::cout << "Distance to singularity is: " << current_manipulability * 10000 << std::endl;
+    std::cout << "Distance to singularity is: " << current_manipulability * 10000 << std::endl;
     //std::cout << "Task torques: " << task_torques.norm() << std::endl;
     //std::cout << "singularity_torques: " << singularity_torques.norm() << std::endl;
     //std::cout << "joint_limit_torques:" << joint_limit_torques.norm() << std::endl;
     //std::cout << "Damping torques: " << damping_torques.norm() << std::endl;
     //std::cout << "Mag of dq_: " << dq_.norm() << std::endl;
-    //std::cout << "All the torques" << tau_d_placeholder.norm() << std::endl;
+    std::cout << "Joint velocities are:\n" << dq_ << std::endl;
+    std::cout << "All the torques" << tau_d_placeholder << std::endl;
     //std::cout << "position is: " << position << std::endl;
     //std::cout << "dq_goal is: \n" << dq_goal << std::endl;
+    //std::cout << "N (Nullspace projection matrix) is: \n" << 100 * N << std::endl;
     //std::cout << std::endl << "task torques: \n" << task_torques << std::endl;
     //std::cout << "joint positions: \n" << q_ << std::endl;
     //std::cout << "dq goal has a norm of:" << norm << std::endl;
