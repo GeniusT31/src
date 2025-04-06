@@ -408,6 +408,8 @@ controller_interface::return_type CartesianImpedanceController::update(const rcl
   //singularity_torques = torques_limited(singularity_torques, 30.0);
   stationary_torques = -critical_damping_matrix(kd, M) * dq_;
 
+
+  //node will be used to receive goal position of end effector in cartesian space
   rclcpp::spin_some(sub_node);
   auto msg = sub_node->get_latest_twist();
   Eigen::Vector<double, 6> desired_ee_vel;
