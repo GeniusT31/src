@@ -266,29 +266,28 @@ public:
 
 
 
-    class XBoxControllerSubscriber : public rclcpp::Node {
+    class CartesianPositionSubscriber : public rclcpp::Node {
       public:
-        XBoxControllerSubscriber()
-          : Node("X_Box_Controller_Subscriber") {
-          subscription_ = this->create_subscription<franka_msgs::msg::XBoxController>(
-            "XBoxButtons", 10, std::bind(&XBoxControllerSubscriber::topic_callback, this, std::placeholders::_1)
-          );
+      CartesianPositionSubscriber() : Node("cartesian_position_subscriber") {
+          subscription_ = this->create_subscription<geometry_msgs::msg::Twist>(
+            "desired_EE_pos", 10,
+            std::bind(&CartesianPositionSubscriber::twist_callback, this, std::placeholders::_1));
         }
       
         franka_msgs::msg::XBoxController get_latest_twist() {
-          return latest_buttons_;
+          return latest_twist_;
         }
       
       private:
-        void topic_callback(const franka_msgs::msg::XBoxController & msg) {
-          latest_buttons_ = msg;
+        void topic_callback(const geometry_msgs::msg::Twist& msg) {
+          latest_twist_ = msg;
         }
       
-        rclcpp::Subscription<franka_msgs::msg::XBoxController>::SharedPtr subscription_;
-        franka_msgs::msg::XBoxController latest_buttons_;
+        rclcpp::Subscription<geometry_msgs::msg::Twist>::SharedPtr subscription_;
+        geometry_msgs::msg::Twist latest_twist_;
       };
       
-std::shared_ptr<XBoxControllerSubscriber> sub_node = std::make_shared<XBoxControllerSubscriber>();
+std::shared_ptr<CartesianPositionSubscriber> sub_node = std::make_shared<CartesianPositionSubscriber>();
 
 }; //class CartesianImpedanceController : public controller_interface::ControllerInterface {
 }  // namespace cartesian_impedance_control

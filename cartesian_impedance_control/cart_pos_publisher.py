@@ -5,10 +5,10 @@ from rclpy.node import Node
 from geometry_msgs.msg import Twist
 import pandas as pd
 
-class Vel_Publisher(Node):
+class Pos_Publisher(Node):
 
     def __init__(self):
-        super().__init__("Cartesian_Velocity_Publisher")
+        super().__init__("Cartesian_Position_Publisher")
 
         self.x = 0.0
         self.y = 0.0
@@ -19,6 +19,11 @@ class Vel_Publisher(Node):
         #0 indexing, using 1 to skip header
         self.current_row = 1
         self.df = pd.read_csv("Random_positions.csv")
+        self.msg = Twist()
+
+        self.msg.angular.x = 0
+        self.msg.angular.y = 0
+        self.msg.angular.z = 0
 
         self.cmd_vel_pub = self.create_publisher(Twist, 'desired_EE_pos', 10)
         self.time = self.create_timer(5, self.send_velocity_command)
@@ -31,30 +36,28 @@ class Vel_Publisher(Node):
             self.file.close()
             rclpy.shutdown()
 
-        msg = Twist()
         #TODO define the position in x, y and z direction
-        msg.linear.x = self.x
-        msg.linear.y = self.y
-        msg.linear.z = self.z
+        self.msg.linear.x = self.x
+        self.msg.linear.y = self.y
+        self.msg.linear.z = self.z
 
-        msg.linear.x = self.df.iloc[self.current_row][0]
-        msg.linear.y = self.df.iloc[self.current_row][1]
-        msg.linear.z = self.df.iloc[self.current_row][2]
+        self.msg.linear.x = self.df.iloc[self.current_row][0]
+        self.msg.linear.y = self.df.iloc[self.current_row][1]
+        self.msg.linear.z = self.df.iloc[self.current_row][2]
         self.current_row = self.current_row + 1
 
-        self.x = msg.linear.x
-        self.y = msg.linear.y
-        self.z = msg.linear.z
-        self.ang_z = msg.angular.z
+        self.x = self.msg.linear.x
+        self.y = self.msg.linear.y
+        self.z = self.msg.linear.z
 
-        self.cmd_vel_pub.publish(msg)
+        self.cmd_vel_pub.publish(self.msg)
 
     async def execute_callback():
         print("Hi")
     
 def main(args = None):
     rclpy.init()
-    node = Vel_Publisher()
+    node = Pos_Publisher()
     rclpy.spin(node)
     node.destroy_node()
     rclpy.shutdown()

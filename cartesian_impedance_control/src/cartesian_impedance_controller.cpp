@@ -412,27 +412,24 @@ controller_interface::return_type CartesianImpedanceController::update(const rcl
   //node will be used to receive goal position of end effector in cartesian space
   rclcpp::spin_some(sub_node);
   auto msg = sub_node->get_latest_twist();
-  Eigen::Vector<double, 6> desired_ee_vel;
-  //desired_ee_vel << -msg.joystick_l_vert, msg.joystick_l_hori, msg.button_b1 - msg.button_a0, 0, 0, msg.button_right_14 - msg.button_left_13;
-  desired_ee_vel <<  -msg.joystick_l_hori, -msg.joystick_l_vert, msg.button_b1 - msg.button_a0, 0, 0, msg.button_right_14 - msg.button_left_13;
-  pos_goal += 0.0005 * desired_ee_vel.topRows(3);
-  error.topRows(3) = 2.5 * (pos_goal - position);
+
+  pos_goal[0] = msg.linear.x;
+  pos_goal[1] = msg.linear.y;
+  pos_goal[2] = msg.linear.z;
+
+  
   for(unsigned int i = 0; i < 3; ++i){
-    if(pos_goal[i] - position[i] > 0.4){
-      pos_goal[i] -= 0.0005 * desired_ee_vel[i];
-    }
-    if((std::abs(desired_ee_vel[i]) < 0.05)){
-      pos_goal[i] = position[i];
+    if(pos_goal[i] - position[i] > 0.4){ //might be missing a std::abs()
+      pos_goal[i] = 0.4;
     }
   }
-  rotation_d_target_[2] += 0.0005 * desired_ee_vel[5];
-  prev_ee_vel = desired_ee_vel.topRows(3);
+  error.topRows(3) = pos_goal - position;
+  //error.topRows(3) = 2.5 * (pos_goal - position);
 
   if(!button_menu_6_prev && msg.button_menu_6){
     singularity_torques_on = !singularity_torques_on;
     if(singularity_torques_on){
       std::cout << "Singularity torques now ON" << std::endl;
-      std::cout << "singularity_torques: " << singularity_torques.norm() << std::endl;
     }
     else std::cout << "Singularity torques now OFF" << std::endl;
   }
@@ -455,8 +452,9 @@ controller_interface::return_type CartesianImpedanceController::update(const rcl
     starting_time = std::chrono::high_resolution_clock::now();
   }
   else if(msg.button_r1_10 && recording){
-    if(file.is_open()) file.close();
-    recording = false;
+    if(file.is_open()){
+    file.close();
+    recording = false;}
   }
 
   if(recording && (outcounter % 100 == 0) && file.is_open()){
