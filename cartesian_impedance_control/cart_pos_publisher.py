@@ -15,7 +15,7 @@ class Pos_Publisher(Node):
         self.y = 0.0
         self.z = 0.0
 
-        self.total_rows = 100
+        self.total_rows = 50
 
         #0 indexing, using 1 to skip header
         self.current_row = 1

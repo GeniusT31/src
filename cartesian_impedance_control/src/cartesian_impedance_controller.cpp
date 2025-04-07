@@ -479,7 +479,9 @@ controller_interface::return_type CartesianImpedanceController::update(const rcl
   tau_d_placeholder += (singularity_torques + stationary_torques )* singularity_torques_on;
   tau_d_placeholder += joint_limit_torques * joint_limit_torques_on;
   tau_d_placeholder += damping_torques;
-
+  if(tau_d_placeholder.norm() > 3.0){
+    tau_d_placeholder = 3.0 * tau_d_placeholder / tau_d_placeholder.norm();
+  }
   tau_d << tau_d_placeholder;
   tau_d << saturateTorqueRate(tau_d, tau_J_d_M);  // Saturate torque rate to avoid discontinuities
   tau_J_d_M = tau_d;
