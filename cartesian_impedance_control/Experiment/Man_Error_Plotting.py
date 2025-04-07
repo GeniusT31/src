@@ -2,18 +2,29 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # Replace 'your_file.csv' with the path to your CSV file
-df = pd.read_csv("/home/anthonyli/franka_ros2_ws/src/cartesian_impedance_control/Experiment/singAvoidOn.csv", delimiter=',')  # or delimiter=',' if it's comma-separated
+On_df = pd.read_csv("./cartesian_impedance_control/Experiment/singAvoidOn.csv", delimiter=',')
+Off_df = pd.read_csv("./cartesian_impedance_control/Experiment/singAvoidOff.csv", delimiter=',')
 
-# Plot Manipulability and Error over Time
-plt.figure(figsize=(10, 6))
-plt.plot(df['Time'], df['Manipulability'], label='Manipulability', color='blue', linewidth=2)
-plt.plot(df['Time'], df['Error'], label='Error', color='red', linewidth=2)
+fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(12, 6))
 
-# Add titles and labels
-plt.title('Manipulability and Error Over Time')
-plt.xlabel('Time (s)')
-plt.ylabel('Value')
-plt.legend()
-plt.grid(True)
+# Plot the first graph (Manipulability vs Time) on the first axis
+ax1.plot(On_df['Time'], On_df['Manipulability'], label='On Manipulability', color='green', linewidth=2)
+ax1.plot(Off_df['Time'], Off_df['Manipulability'], label='Off Manipulability', color='red', linewidth=2)
+ax1.set_xlabel('Time (s)')
+ax1.set_ylabel('Manipulability')
+ax1.set_title('Manipulability vs Time')
+ax1.grid(True)
+
+# Plot the second graph (Error vs Time) on the second axis
+ax2.plot(On_df['Time'], On_df['Error'], label='On Error', color='green', linewidth=2)
+ax2.plot(Off_df['Time'], Off_df['Error'], label='Off Error', color='red', linewidth=2)
+ax2.set_xlabel('Time (s)')
+ax2.set_ylabel('Error')
+ax2.set_title('Error vs Time')
+ax2.grid(True)
+
+# Adjust layout to avoid overlap
 plt.tight_layout()
+
+# Show the plot
 plt.show()
