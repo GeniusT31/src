@@ -153,7 +153,7 @@ public:
     double max_torque = 30.0;
     double danger_angle = 0.5;
     bool danger[7] = {};
-    Eigen::Vector<double, 3> pos_goal{0.2, 0.0, 0.3};
+    Eigen::Vector<double, 3> pos_goal{0.4, 0.0, 0.3};
 
     //joint space impedance
     Eigen::Matrix<double, 7, 7> kp_joint_space{
@@ -168,10 +168,8 @@ public:
     bool recording = false;
     bool singularity_torques_on = true;
     bool joint_limit_torques_on = true;
-    unsigned int noSingOff = 1;
-    unsigned int noSingOn = 1;
     
-    std::string csv_path = "/home/anthonyli/Desktop/Thesis_Data/det(JJT)/Tony/";
+    std::string csv_path = "/home/anthonyli/franka_ros2_ws/src/cartesian_impedance_control/Experiment/Random_positions.csv";
     std::string current_user = "Tony"; //only used for naming the .csv file created
     bool button_menu_6_prev = false;
     bool button_4_prev = false;
@@ -274,12 +272,17 @@ public:
             std::bind(&CartesianPositionSubscriber::twist_callback, this, std::placeholders::_1));
         }
       
-        franka_msgs::msg::XBoxController get_latest_twist() {
+        geometry_msgs::msg::Twist get_latest_twist() {
           return latest_twist_;
+        }
+
+        bool is_topic_active() {
+          // this counts how many publishers are on this topic
+          return this->count_publishers("desired_EE_pos") > 0;
         }
       
       private:
-        void topic_callback(const geometry_msgs::msg::Twist& msg) {
+        void twist_callback(const geometry_msgs::msg::Twist& msg) {
           latest_twist_ = msg;
         }
       
