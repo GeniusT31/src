@@ -15,7 +15,7 @@ class Pos_Publisher(Node):
         self.y = 0.0
         self.z = 0.0
 
-        self.total_rows = 200
+        self.total_rows = 100
 
         #0 indexing, using 1 to skip header
         self.current_row = 1
@@ -31,9 +31,9 @@ class Pos_Publisher(Node):
         self.time = self.create_timer(5, self.send_velocity_command)
 
         self.get_logger().info("Cartesian end effector velocity publisher starting in ")
-        for i in range(3):
+        for i in range(5):
             time.sleep(1)
-            print(3 - i)
+            print(5 - i)
     
     def send_velocity_command(self):
         if(self.current_row == self.total_rows):
@@ -51,7 +51,6 @@ class Pos_Publisher(Node):
 
         self.get_logger().info("Currently publishing row: " + str(self.current_row))
         self.get_logger().info("Position published x:" + str(self.msg.linear.x) + "y: " + str(self.msg.linear.y) + "z: " + str(self.msg.linear.z))
-        print(self.msg.angular.x)
 
         self.current_row = self.current_row + 1
 

@@ -381,7 +381,7 @@ controller_interface::return_type CartesianImpedanceController::update(const rcl
     q_as_array[i] = q_as_array[i] - delta_q;
   }
   
-  dq_goal = del_manipulability / 100;
+  dq_goal = del_manipulability / 50;
   
   if(current_manipulability * 10000 > 30){
     Eigen::MatrixXd bad_N = Eigen::MatrixXd::Identity(7, 7) - pseudoInverse(cut_jacobian) * cut_jacobian;
@@ -400,7 +400,9 @@ controller_interface::return_type CartesianImpedanceController::update(const rcl
   dq_goal *= 2000;
   double kd = 11.0;
   singularity_torques = kd * (dq_goal - dq_);
-  //singularity_torques = torques_limited(singularity_torques, 30.0);
+  if(singularity_torques.norm() > 10.0){
+    singularity_torques = 10 * singularity_torques / singularity_torques.norm();
+  }
   stationary_torques = -critical_damping_matrix(kd, M) * dq_;
 
 
@@ -414,10 +416,10 @@ controller_interface::return_type CartesianImpedanceController::update(const rcl
 
     
     for(unsigned int i = 0; i < 3; ++i){
-      if(pos_goal[i] - position[i] > 0.4){ //might be missing a std::abs()
+      if(pos_goal[i] - position[i] > 0.4){
         pos_goal[i] = 0.4 + position[i];
       }
-      else if(pos_goal[i] - position[i] < -0.4){ //might be missing a std::abs()
+      else if(pos_goal[i] - position[i] < -0.4){
         pos_goal[i] = -0.4 + position[i];
       }
     }
@@ -449,11 +451,14 @@ controller_interface::return_type CartesianImpedanceController::update(const rcl
     file << "Time,Manipulability,Error\n";
     starting_time = std::chrono::high_resolution_clock::now();
   }
-  else if((msg.angular.x < 0.5) && recording){
+  else if((time_since_start > 10) && (msg.angular.x < 0.5) && recording){
     if(file.is_open()){
     file.close();
     recording = false;
-    std::cout << "Recording has completed" << std::endl;}
+    std::cout << "Recording has completed" << std::endl;
+    rclcpp::shutdown();
+    pos_goal << 0.4, 0.0, 0.3;
+    }
   }
 
   if(recording && (outcounter % 100 == 0) && file.is_open()){
@@ -470,14 +475,10 @@ controller_interface::return_type CartesianImpedanceController::update(const rcl
 
   damping_torques = -jacobian.transpose() * critical_damping_matrix(kp, M, jacobian) * jacobian * dq_; 
 
-  //double ks = 8.0;
-  //stationary_torques = -ks * jacobian.transpose() * jacobian * dq_;
-
   tau_d_placeholder += task_torques;
-  tau_d_placeholder += singularity_torques * singularity_torques_on;
+  tau_d_placeholder += (singularity_torques + stationary_torques )* singularity_torques_on;
   tau_d_placeholder += joint_limit_torques * joint_limit_torques_on;
   tau_d_placeholder += damping_torques;
-  //tau_d_placeholder += stationary_torques;
 
   tau_d << tau_d_placeholder;
   tau_d << saturateTorqueRate(tau_d, tau_J_d_M);  // Saturate torque rate to avoid discontinuities
@@ -493,6 +494,7 @@ controller_interface::return_type CartesianImpedanceController::update(const rcl
         std::cout << "Joint " << i + 1 << " is close to its joint limit." << std::endl;
         std::cout << "Reaction torque is " << tau_d(i) << std::endl;}
     }
+    ++time_since_start;
     //std::cout << error << std::endl;
     //std::cout << "N*N+\n" << 1000 * N * N_pseud << std::endl;
     //std::cout << "Desired EE velocity: \n" << desired_ee_vel << std::endl;
@@ -512,7 +514,8 @@ controller_interface::return_type CartesianImpedanceController::update(const rcl
     //std::cout << "dq goal has a norm of:" << norm << std::endl;
     //std::cout << "J * dq_goal is \n" << cut_jacobian * dq_goal << std::endl;
     //std::cout << "J * current q_dot \n" << cut_jacobian * dq_ << std::endl;
-    std::cout << "Gloal position is: \n" << pos_goal << std::endl;
+    //std::cout << "Goal position is: \n" << pos_goal << std::endl;
+    std::cout << "Error is: \n" << error.topRows(3) / 2.5 << std::endl;
  
   }
   outcounter++;

@@ -2,10 +2,10 @@ import csv
 import random
 
 # File to save
-filename = "Random_positions.csv"
+filename = "/home/anthonyli/franka_ros2_ws/src/cartesian_impedance_control/Experiment/Random_positions.csv"
 
 # Number of rows
-num_rows = 200
+num_rows = 100
 
 # Open the CSV for writing
 with open(filename, mode='w', newline='') as file:

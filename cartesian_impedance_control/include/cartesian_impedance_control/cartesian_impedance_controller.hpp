@@ -154,6 +154,7 @@ public:
     double danger_angle = 0.5;
     bool danger[7] = {};
     Eigen::Vector<double, 3> pos_goal{0.4, 0.0, 0.3};
+    unsigned int time_since_start = 0;
 
     //joint space impedance
     Eigen::Matrix<double, 7, 7> kp_joint_space{
@@ -166,10 +167,10 @@ public:
     {0,   0,   0,   0,   0,   0,  5}};
 
     bool recording = false;
-    bool singularity_torques_on = true;
+    bool singularity_torques_on = false;
     bool joint_limit_torques_on = true;
     
-    std::string csv_path = "/home/anthonyli/franka_ros2_ws/src/cartesian_impedance_control/Experiment/Random_positions.csv";
+    std::string csv_path = "/home/anthonyli/franka_ros2_ws/src/cartesian_impedance_control/Experiment/";
     std::string current_user = "Tony"; //only used for naming the .csv file created
     bool button_menu_6_prev = false;
     bool button_4_prev = false;
