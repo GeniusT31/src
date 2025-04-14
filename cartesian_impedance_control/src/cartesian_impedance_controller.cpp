@@ -385,23 +385,17 @@ controller_interface::return_type CartesianImpedanceController::update(const rcl
   }
   
 
-  double current_manipulability = manipulability(jacobian);
-  double delta_q = 0.01;
-  for(unsigned int i = 0; i < 7; ++i){
-    q_as_array[i] = q_as_array[i] + delta_q;
-    jacobian_array =  franka_robot_model_->getZeroJacobian(franka::Frame::kEndEffector, q_as_array, F_T_EE, EE_T_K);
-    Eigen::Map<Eigen::Matrix<double, 6, 7>> j_plus_1(jacobian_array.data());
-    del_manipulability(i) = (manipulability(j_plus_1) - current_manipulability) / delta_q;
-    q_as_array[i] = q_as_array[i] - delta_q;
-  }
+ if(del_manipulability[0] >= 1.0){
+  del_manipulability[0] = del_manipulability[0] - 0.00005;
+ }
+ else if(del_manipulability[0] <= -1.0){
+  del_manipulability[0] = del_manipulability[0] + 0.00005;
+ }
   
-  dq_goal = del_manipulability / 100;
-  
-  if(current_manipulability * 10000 > 30){
-    N = Eigen::MatrixXd::Identity(7, 7) - pseudoInverse(cut_jacobian) * cut_jacobian;
-    N_pseud = pseudoInverse_rank_1(N);
-    dq_goal = N * N_pseud * del_manipulability;
-  }
+
+  N = Eigen::MatrixXd::Identity(7, 7) - pseudoInverse(cut_jacobian) * cut_jacobian;
+  dq_goal = N * del_manipulability;
+
   dq_goal *= 2000;
   double kd = 11.0;
   singularity_torques = kd * (dq_goal - dq_);
