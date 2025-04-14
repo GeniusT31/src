@@ -104,20 +104,6 @@ Eigen::MatrixXd pseudoInverse(const Eigen::MatrixXd& M, bool damped = true){
   return inverse;
 }
 
-//pseudo inverse where the input and output matricies are forced to be rank 1
-Eigen::MatrixXd pseudoInverse_rank_1(Eigen::MatrixXd N){
-  Eigen::JacobiSVD<Eigen::MatrixXd> svd(N, Eigen::ComputeThinU | Eigen::ComputeThinV);
-
-    Eigen::VectorXd singVals = svd.singularValues();
-    Eigen::MatrixXd U = svd.matrixU();
-    Eigen::MatrixXd V = svd.matrixV();
-
-    // 4) The largest singular value is singVals(0) (if rank-1 is correct, the rest are near zero)
-    double sigma1 = singVals(0);
-
-    Eigen::MatrixXd N_pinv = V.col(0) * (1.0 / sigma1) * U.col(0).transpose();
-    return N_pinv;
-}
 
 Eigen::MatrixXd critical_damping_matrix(const Eigen::MatrixXd& K, const Eigen::MatrixXd& M){
   Eigen::MatrixXd Intermediate = K * M;
@@ -383,22 +369,23 @@ controller_interface::return_type CartesianImpedanceController::update(const rcl
     }
     else danger[joint_num] = false;
   }
-  
-
- if(del_manipulability[0] >= 1.0){
-  del_manipulability[0] = del_manipulability[0] - 0.00005;
- }
- else if(del_manipulability[0] <= -1.0){
-  del_manipulability[0] = del_manipulability[0] + 0.00005;
- }
-  
+  double current_manipulability = manipulability(jacobian);
 
   N = Eigen::MatrixXd::Identity(7, 7) - pseudoInverse(cut_jacobian) * cut_jacobian;
-  dq_goal = N * del_manipulability;
+  Eigen::JacobiSVD<Eigen::MatrixXd> svd(N, Eigen::ComputeThinU | Eigen::ComputeThinV);
 
-  dq_goal *= 2000;
-  double kd = 11.0;
+  Eigen::VectorXd singVals = svd.singularValues();
+  Eigen::MatrixXd U = svd.matrixU();
+  Eigen::MatrixXd V = svd.matrixV();
+  double sigma1 = singVals(0);
+  N = U.col(0) * sigma1 * V.col(0).transpose();
+  dq_goal = N.col(0);
+
+  dq_goal = dq_goal / dq_goal.norm() * 1.2 * sin(outcounter/ 1000);
+
+  double kd = 8.0;
   singularity_torques = kd * (dq_goal - dq_);
+  if(!(outcounter %10))std::cout << singularity_torques << std::endl;
   //singularity_torques = torques_limited(singularity_torques, 30.0);
   stationary_torques = -critical_damping_matrix(kd, M) * dq_;
 
@@ -412,9 +399,6 @@ controller_interface::return_type CartesianImpedanceController::update(const rcl
   for(unsigned int i = 0; i < 3; ++i){
     if(pos_goal[i] - position[i] > 0.4){
       pos_goal[i] -= 0.0005 * desired_ee_vel[i];
-    }
-    if((std::abs(desired_ee_vel[i]) < 0.05)){
-      pos_goal[i] = position[i];
     }
   }
   rotation_d_target_[2] += 0.0005 * desired_ee_vel[5];
@@ -496,18 +480,18 @@ controller_interface::return_type CartesianImpedanceController::update(const rcl
         std::cout << "Reaction torque is " << tau_d(i) << std::endl;}
     }
     //std::cout << error << std::endl;
-    //std::cout << "N*N+\n" << 1000 * N * N_pseud << std::endl;
+    std::cout << "1000* N\n" << 1000 * N << std::endl;
     //std::cout << "Desired EE velocity: \n" << desired_ee_vel << std::endl;
-    std::cout << "Distance to singularity is: " << current_manipulability * 10000 << std::endl;
+    //std::cout << "Distance to singularity is: " << current_manipulability * 10000 << std::endl;
     //std::cout << "Task torques: " << task_torques.norm() << std::endl;
-    //std::cout << "singularity_torques: " << singularity_torques.norm() << std::endl;
+    std::cout << "singularity_torques: " << singularity_torques.norm() << std::endl;
     //std::cout << "joint_limit_torques:" << joint_limit_torques.norm() << std::endl;
     //std::cout << "Damping torques: " << damping_torques.norm() << std::endl;
     //std::cout << "Mag of dq_: " << dq_.norm() << std::endl;
-    std::cout << "Joint velocities are:\n" << dq_ << std::endl;
+    //std::cout << "Joint velocities are:\n" << dq_ << std::endl;
     std::cout << "All the torques" << tau_d_placeholder << std::endl;
     //std::cout << "position is: " << position << std::endl;
-    //std::cout << "dq_goal is: \n" << dq_goal << std::endl;
+    std::cout << "dq_goal is: \n" << dq_goal << std::endl;
     //std::cout << "N (Nullspace projection matrix) is: \n" << 100 * N << std::endl;
     //std::cout << std::endl << "task torques: \n" << task_torques << std::endl;
     //std::cout << "joint positions: \n" << q_ << std::endl;

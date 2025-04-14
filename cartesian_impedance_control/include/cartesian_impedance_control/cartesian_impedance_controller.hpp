@@ -109,12 +109,11 @@ public:
     Eigen::Matrix<double, 6, 1> O_F_ext_hat_K_M = Eigen::MatrixXd::Zero(6,1);
     Eigen::Matrix<double, 7, 1> q_;
     std::array<double, 7> q_as_array;
-    Eigen::Vector<double, 7> del_manipulability;
     Eigen::MatrixXd N;
     Eigen::MatrixXd N_pseud;
     Eigen::VectorXd dq_goal;
     Eigen::Matrix<double, 7, 1> dq_;
-    Eigen::MatrixXd jacobian_transpose_pinv;  
+    Eigen::MatrixXd jacobian_transpose_pinv;
 
     //Robot parameters
     const int num_joints = 7;
