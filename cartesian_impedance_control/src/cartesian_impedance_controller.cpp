@@ -411,8 +411,8 @@ controller_interface::return_type CartesianImpedanceController::update(const rcl
   rclcpp::spin_some(sub_node);
   auto msg = sub_node->get_latest_twist();
   Eigen::Vector<double, 6> desired_ee_vel;
-  //desired_ee_vel << -msg.joystick_l_vert, msg.joystick_l_hori, msg.button_b1 - msg.button_a0, 0, 0, msg.button_right_14 - msg.button_left_13;
-  desired_ee_vel <<  -msg.joystick_l_hori, -msg.joystick_l_vert, msg.button_b1 - msg.button_a0, 0, 0, msg.button_right_14 - msg.button_left_13;
+  desired_ee_vel << -msg.joystick_l_vert, msg.joystick_l_hori, msg.button_b1 - msg.button_a0, 0, 0, msg.button_right_14 - msg.button_left_13;
+  //desired_ee_vel <<  -msg.joystick_l_hori, -msg.joystick_l_vert, msg.button_b1 - msg.button_a0, 0, 0, msg.button_right_14 - msg.button_left_13;
   pos_goal += 0.0005 * desired_ee_vel.topRows(3);
   error.topRows(3) = 2.5 * (pos_goal - position);
   for(unsigned int i = 0; i < 3; ++i){
@@ -444,6 +444,7 @@ controller_interface::return_type CartesianImpedanceController::update(const rcl
   button_menu_6_prev = msg.button_menu_6;
   button_4_prev = msg.button_4;
 
+  /*
   if(msg.button_l1_9 && !file.is_open()){
     recording = true;
     if(singularity_torques_on) {file.open(csv_path + current_user + "_singAvoidOn_" + std::to_string(noSingOn) + ".csv" ); ++noSingOn;}
@@ -464,7 +465,7 @@ controller_interface::return_type CartesianImpedanceController::update(const rcl
     file << duration.count() << "," << current_manipulability * 10000 << "\n";
     file.flush();
   }
-
+*/
   double kp = 30.0;
   task_torques = kp * jacobian.transpose() * (error);
 
