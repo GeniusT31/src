@@ -61,3 +61,4 @@ Open another new terminal to launch the gripper functionality, not needed if not
 python3 /home/<user>/franka_ros2_ws/src/cartesian_impedance_control/Action_client.py
 ```
 
+![Controller Bindings](Controller.png)
